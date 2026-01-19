@@ -106,5 +106,13 @@ pipeline {
             }
         }
 
+        stage('Performance') {
+            steps {
+                bat '''
+                    "C:\\Users\\jorge.unir\\Downloads\\apache-jmeter-5.6.3\\apache-jmeter-5.6.3\\bin\\jmeter.bat" -n -t test\\jmeter\\performance_test.jmx -l test\\jmeter\\results.jtl -j test\\jmeter\\jmeter.log
+                '''
+            }
+        }
+
     }
 }
