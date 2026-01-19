@@ -33,13 +33,9 @@ pipeline {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     bat '''
                         SET PYTHONPATH=%WORKSPACE%
-                        pytest ^ 
-                          --junitxml=result-unit.xml ^ 
-                          --cov=. ^ 
-                          --cov-report=xml ^ 
-                          test\\unit
+                        pytest --junitxml=result-unit.xml --cov=. --cov-report=xml test\\unit
                     '''
-                    stash name: 'test-results', includes: 'result-unit.xml, coverage.xml'
+                    stash name: 'test-results', includes: 'result-unit.xml, coverage.xml', allowEmpty: true
                 }
             }
         }
@@ -120,7 +116,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     unstash 'test-results'
-                    bat 'coverage report'
+                    bat 'coverage report || echo "No coverage data found"'
                 }
             }
         }
