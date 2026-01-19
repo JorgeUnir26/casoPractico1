@@ -14,5 +14,97 @@ pipeline {
                 bat 'dir'
             }
         }
+
+        stage('Unit') {
+            steps {
+                bat '''
+                    SET PYTHONPATH=%WORKSPACE%
+                    pytest ^
+                      --junitxml=result-unit.xml ^
+                      --cov=. ^
+                      --cov-report=xml ^
+                      test\\unit
+                '''
+
+                stash name: 'test-results', includes: 'result-unit.xml, coverage.xml'
+            }
+        }
+
+        stage('Rest') {
+            steps {
+                bat '''
+                    SET FLASK_APP=app\\api.py
+                    start flask run
+                    start java -jar C:\\Users\\jorge.unir\\Downloads\\wiremock-standalone-3.13.2.jar --port 9090 --root-dir "%WORKSPACE%\\test\\wiremock"
+                    SET PYTHONPATH=%WORKSPACE%
+                    pytest --junitxml=result-service.xml test\\rest
+                '''
+            }
+        }
+
+        stage('Flake8') {
+            steps {
+               script {
+                    bat '''
+                        python -m flake8 . > flake8_report.txt || exit 0
+                    '''
+
+                    def issues = readFile('flake8_report.txt')
+                                    .readLines()
+                                    .findAll { it.trim() }
+                                    .size()
+
+                    echo "Hallazgos encontrados flake8: ${issues}"
+
+                    if (issues >= 10) {
+                        error("Build UNHEALTHY: ${issues} hallazgos (>=10)")
+                    } 
+                    else if (issues >= 8) {
+                        unstable("Build UNSTABLE: ${issues} hallazgos (>=8)")
+                    } 
+                    else {
+                        echo "Calidad aceptable (${issues} hallazgos)"
+                    }
+                }
+            }
+        }
+
+        stage('Security Test') {
+            steps {
+                script {
+                    bat '''
+                        python -m bandit -r . -f txt > bandit_report.txt || exit 0
+                    '''
+
+                    def issues = readFile('bandit_report.txt')
+                                    .readLines()
+                                    .findAll { it.startsWith('>> Issue') }
+                                    .size()
+
+                    echo "Hallazgos de seguridad (Bandit): ${issues}"
+
+                    if (issues >= 4) {
+                        error("Build UNHEALTHY: ${issues} problemas de seguridad")
+                    }
+                    else if (issues >= 2) {
+                        unstable("Build UNSTABLE: ${issues} problemas de seguridad")
+                    }
+                    else {
+                        echo "Seguridad aceptable (${issues} problemas)"
+                    }
+                }
+            }
+        }
+
+        stage('Coverage') {
+            steps {
+                unstash 'test-results'
+
+                bat '''
+                    coverage report
+                '''
+            }
+        }
+
     }
 }
