@@ -15,6 +15,15 @@ pipeline {
             }
         }
 
+        stage('Instalando Dependencias') {
+            steps {
+                bat '''
+                    python -m pip install --upgrade pip
+                    pip install pytest pytest-cov flake8 bandit
+                '''
+            }
+        }
+
         stage('Unit') {
             steps {
                 bat '''
